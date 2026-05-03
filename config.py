@@ -9,6 +9,9 @@ DATA_DIR = BASE_DIR / "data"
 # SQLite database URL — SQLAlchemy needs it in this format
 DATABASE_URL = f"sqlite:///{DATA_DIR / 'transactions.db'}"
 
-# Seed data files
-NAMES_ACCOUNTS_FILE = DATA_DIR / "names_accounts.xlsx"
-QB_RULES_FILE = DATA_DIR / "qb_rules.xlsx"
+# Seed data file
+NAMES_FILE = DATA_DIR / "Names.xlsx"
+
+# Matching mode — "number" matches by account number (e.g. 6005)
+#                 "name" matches by account name (e.g. "Wages")
+MATCH_BY = "number"  # Change to "name" for clients without account numbers

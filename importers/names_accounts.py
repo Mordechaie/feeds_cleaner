@@ -16,7 +16,8 @@ def import_names_accounts():
 
     for row in rows:
         raw_name = row.get("merchant")
-        account = row.get("account")
+        account_number = str(row.get("Num", "")).strip()
+        account_name = row.get("account_name")
 
         # Skip rows missing essential data
         if not raw_name or not account:

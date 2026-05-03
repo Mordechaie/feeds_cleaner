@@ -9,7 +9,8 @@ class Merchant(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     raw_name = Column(String, nullable=False)          # Original name from Excel
     clean_name = Column(String, nullable=True)         # Normalized version
-    account = Column(String, nullable=False)           # Chart of accounts category
+    account_number = Column(String, nullable=False) 
+    account_name = Column(String, nullable=False)           # Chart of accounts category
     created_at = Column(DateTime, default=func.now())  # When the record was imported
 
     def __repr__(self):
