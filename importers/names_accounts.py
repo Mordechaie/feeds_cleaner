@@ -1,30 +1,28 @@
 # importers/names_accounts.py
-from db.session import get_session
+from db.session import SessionLocal
 from models.merchant import Merchant
 from utils.excel import read_excel
-from config import NAMES_ACCOUNTS_FILE
+from config import NAMES_FILE
 
-def import_names_accounts():
-    """Read names_accounts.xlsx and seed the merchants table."""
-    print(f"Reading {NAMES_ACCOUNTS_FILE}...")
-    rows = read_excel(NAMES_ACCOUNTS_FILE)
+def import_names():
+    """Read Names.xlsx and seed the merchants table."""
+    print(f"Reading {NAMES_FILE}...")
+    rows = read_excel(NAMES_FILE)
 
-    session = next(get_session())
+    session = SessionLocal()
 
     imported = 0
     skipped = 0
 
     for row in rows:
-        raw_name = row.get("merchant")
+        raw_name = row.get("Name")
         account_number = str(row.get("Num", "")).strip()
         account_name = row.get("account_name")
 
-        # Skip rows missing essential data
-        if not raw_name or not account:
+        if not raw_name or not account_number or not account_name:
             skipped += 1
             continue
 
-        # Avoid duplicates
         exists = session.query(Merchant).filter_by(raw_name=raw_name).first()
         if exists:
             skipped += 1
@@ -32,7 +30,8 @@ def import_names_accounts():
 
         merchant = Merchant(
             raw_name=raw_name,
-            account=account,
+            account_number=account_number,
+            account_name=account_name.strip(),
         )
         session.add(merchant)
         imported += 1
@@ -43,4 +42,5 @@ def import_names_accounts():
     print(f"Done. {imported} imported, {skipped} skipped.")
 
 if __name__ == "__main__":
-    import_names_accounts()
+    import_names()
+    

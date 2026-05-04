@@ -3,7 +3,7 @@ from db.session import engine
 from models.base import Base
 
 # Import all models so Base knows about them before creating tables
-from models import merchant, rule, transaction
+from models import merchant, transaction
 
 def init_db():
     """Create all tables in the database."""

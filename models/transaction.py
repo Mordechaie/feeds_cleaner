@@ -13,9 +13,10 @@ class Transaction(Base):
     amount = Column(Float, nullable=False)             # Transaction amount
     account = Column(String, nullable=True)            # Matched chart of accounts category
     source = Column(String, nullable=True)             # e.g. "Chase", "Amex", "BofA"
+    transaction_type = Column(String, nullable=True)   # e.g. ACH_DEBIT, DEBIT_CARD
     is_cleaned = Column(Boolean, default=False)        # Has it been processed yet?
     is_matched = Column(Boolean, default=False)        # Was an account found for it?
     created_at = Column(DateTime, default=func.now())
-
+    transaction_type = Column(String, nullable=True)   # e.g. ACH_DEBIT, DEBIT_CARD
     def __repr__(self):
         return f"<Transaction(date='{self.date}', raw_description='{self.raw_description}', amount={self.amount})>"
