@@ -119,44 +119,58 @@ def review_unmatched():
 
 
 def export_to_excel():
-    """Export cleaned transactions to an Excel file."""
+    """Export all transactions to an Excel file."""
     session = SessionLocal()
-    transactions = session.query(Transaction).filter_by(is_cleaned=True).all()
+    transactions = session.query(Transaction).order_by(Transaction.date).all()
     session.close()
 
     if not transactions:
-        print("\nNo cleaned transactions to export.")
+        print("\nNo transactions to export.")
         return
 
     wb = Workbook()
     ws = wb.active
-    ws.title = "Cleaned Transactions"
+    ws.title = "Transactions"
 
-    headers = ["Date", "Raw Description", "Clean Description", "Account Number", "Account Name", "Amount"]
+    # Header row
+    headers = ["Date", "Raw Description", "Clean Description", "Account Number", "Account Name", "Amount", "Matched"]
     ws.append(headers)
 
+    # Style the header
     for cell in ws[1]:
         cell.font = Font(bold=True, color="FFFFFF", name="Arial")
         cell.fill = PatternFill("solid", start_color="2F4F8F")
         cell.alignment = Alignment(horizontal="center")
 
+    # Data rows
     for t in transactions:
         ws.append([
             str(t.date),
             t.raw_description,
-            t.clean_description,
-            t.account if MATCH_BY == "number" else "",
-            t.account if MATCH_BY == "name" else "",
+            t.clean_description or "",
+            t.account_number or "",
+            t.account_name or "",
             t.amount,
+            "Yes" if t.is_matched else "No",
         ])
 
+    # Highlight unmatched rows in light yellow
+    yellow = PatternFill("solid", start_color="FFFACD")
+    for row in ws.iter_rows(min_row=2, max_row=ws.max_row):
+        if row[6].value == "No":
+            for cell in row:
+                cell.fill = yellow
+
+    # Column widths
     ws.column_dimensions["A"].width = 14
-    ws.column_dimensions["B"].width = 45
+    ws.column_dimensions["B"].width = 50
     ws.column_dimensions["C"].width = 35
     ws.column_dimensions["D"].width = 18
     ws.column_dimensions["E"].width = 28
     ws.column_dimensions["F"].width = 12
+    ws.column_dimensions["G"].width = 10
 
+    # Amount column — currency format
     for row in ws.iter_rows(min_row=2, min_col=6, max_col=6):
         for cell in row:
             cell.number_format = '#,##0.00;(#,##0.00)'
@@ -164,7 +178,6 @@ def export_to_excel():
     output_path = "data/cleaned_transactions.xlsx"
     wb.save(output_path)
     print(f"\nExported {len(transactions)} transactions to {output_path}")
-
 
 def show_menu():
     print("\n" + "=" * 40)

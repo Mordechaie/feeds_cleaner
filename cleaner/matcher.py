@@ -1,27 +1,40 @@
 # cleaner/matcher.py
-from db.session import get_session
+from rapidfuzz import fuzz
+from db.session import SessionLocal
 from models.merchant import Merchant
+from models.rule import Rule
 from models.transaction import Transaction
-from config import MATCH_BY
+
+# Minimum score for a fuzzy match to be accepted (0-100)
+FUZZY_THRESHOLD = 80
 
 def match_transaction(transaction: Transaction) -> bool:
     """
-    Try to match a cleaned transaction description to a merchant.
-    Updates the transaction's account fields in place.
+    Try to match a cleaned transaction description to a rule or merchant.
+    Rules are checked first, merchants as fallback.
     Returns True if a match was found, False if not.
     """
     if not transaction.clean_description:
         return False
 
-    session = next(get_session())
+    session = SessionLocal()
+    clean = transaction.clean_description.upper()
 
-    merchant = _find_match(session, transaction.clean_description)
+    # Step 1 — check rules first
+    rule = _match_rules(session, clean)
+    if rule:
+        transaction.clean_description = rule.clean_name
+        transaction.account_number = rule.account_number
+        transaction.account_name = rule.account_name
+        transaction.is_matched = True
+        session.close()
+        return True
 
+    # Step 2 — fall back to merchant lookup
+    merchant = _match_merchants(session, clean)
     if merchant:
-        if MATCH_BY == "number":
-            transaction.account = merchant.account_number
-        else:
-            transaction.account = merchant.account_name
+        transaction.account_number = merchant.account_number
+        transaction.account_name = merchant.account_name
         transaction.is_matched = True
         session.close()
         return True
@@ -31,28 +44,53 @@ def match_transaction(transaction: Transaction) -> bool:
     return False
 
 
-def _find_match(session, clean_description: str):
+def _match_rules(session, clean: str):
     """
-    Try to find a merchant match using two strategies:
-    1. Exact match — the clean description matches raw_name exactly
-    2. Partial match — a merchant's raw_name appears anywhere in the description
+    Check active rules using exact then fuzzy matching.
     """
-    clean_upper = clean_description.upper()
+    rules = session.query(Rule).filter_by(is_active=True).all()
 
-    # Strategy 1 — exact match
-    merchant = session.query(Merchant).filter(
-        Merchant.raw_name.ilike(clean_description)
-    ).first()
+    # Exact / partial match first
+    for rule in rules:
+        if rule.pattern.upper() in clean:
+            return rule
 
-    if merchant:
-        return merchant
+    # Fuzzy match second
+    best_score = 0
+    best_rule = None
+    for rule in rules:
+        score = fuzz.partial_ratio(rule.pattern.upper(), clean)
+        if score > best_score:
+            best_score = score
+            best_rule = rule
 
-    # Strategy 2 — partial match
-    # Loop through all merchants and check if their raw_name
-    # appears anywhere in the cleaned description
-    all_merchants = session.query(Merchant).all()
-    for merchant in all_merchants:
-        if merchant.raw_name.upper() in clean_upper:
+    if best_score >= FUZZY_THRESHOLD:
+        return best_rule
+
+    return None
+
+
+def _match_merchants(session, clean: str):
+    """
+    Check merchants using exact then fuzzy matching.
+    """
+    merchants = session.query(Merchant).all()
+
+    # Exact / partial match first
+    for merchant in merchants:
+        if merchant.raw_name.upper() in clean:
             return merchant
+
+    # Fuzzy match second
+    best_score = 0
+    best_match = None
+    for merchant in merchants:
+        score = fuzz.partial_ratio(merchant.raw_name.upper(), clean)
+        if score > best_score:
+            best_score = score
+            best_match = merchant
+
+    if best_score >= FUZZY_THRESHOLD:
+        return best_match
 
     return None

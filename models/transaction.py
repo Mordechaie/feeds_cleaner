@@ -11,7 +11,8 @@ class Transaction(Base):
     raw_description = Column(String, nullable=False)   # Original bank description
     clean_description = Column(String, nullable=True)  # After normalization
     amount = Column(Float, nullable=False)             # Transaction amount
-    account = Column(String, nullable=True)            # Matched chart of accounts category
+    account_number = Column(String, nullable=True)            # Matched chart of accounts category
+    account_name = Column(String,nullable=True)
     source = Column(String, nullable=True)             # e.g. "Chase", "Amex", "BofA"
     transaction_type = Column(String, nullable=True)   # e.g. ACH_DEBIT, DEBIT_CARD
     is_cleaned = Column(Boolean, default=False)        # Has it been processed yet?
