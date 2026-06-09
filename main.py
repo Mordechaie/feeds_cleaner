@@ -25,9 +25,14 @@ def load_transactions(filepath: str):
 
     reader = csv.DictReader(StringIO(content))
     rows = list(reader)
-    print(f"DEBUG: CSV has {len(rows)} rows")
 
     session = SessionLocal()
+
+    # Wipe existing transactions so the DB reflects only the file just loaded.
+    deleted = session.query(Transaction).delete()
+    if deleted:
+        print(f"Cleared {deleted} existing transactions.")
+
     imported = 0
     skipped = 0
 
@@ -179,43 +184,34 @@ def export_to_excel():
     wb.save(output_path)
     print(f"\nExported {len(transactions)} transactions to {output_path}")
 
-def show_menu():
-    print("\n" + "=" * 40)
-    print("       FEEDS CLEANER")
-    print("=" * 40)
-    print("1. Initialize database")
-    print("2. Import merchant names")
-    print("3. Load transactions from CSV")
-    print("4. Clean and match transactions")
-    print("5. Review unmatched transactions")
-    print("6. Export to Excel")
-    print("7. Exit")
-    print("=" * 40)
+def setup():
+    """Make sure the database exists and merchants are seeded."""
+    init_db()
+    session = SessionLocal()
+    has_merchants = session.query(Merchant).first() is not None
+    session.close()
+    if not has_merchants:
+        import_names()
 
 
 def main():
-    while True:
-        show_menu()
-        choice = input("Select an option: ").strip()
+    print("\n" + "=" * 40)
+    print("       FEEDS CLEANER")
+    print("=" * 40)
 
-        if choice == "1":
-            init_db()
-        elif choice == "2":
-            import_names()
-        elif choice == "3":
-            filepath = input("Enter path to CSV file: ").strip()
-            load_transactions(filepath)
-        elif choice == "4":
-            clean_transactions()
-        elif choice == "5":
-            review_unmatched()
-        elif choice == "6":
-            export_to_excel()
-        elif choice == "7":
-            print("\nGoodbye.\n")
-            break
-        else:
-            print("\nInvalid option. Please choose 1-7.")
+    setup()
+
+    raw = input("\nEnter path to CSV file (or 'q' to quit): ").strip()
+    if raw.lower() in ("", "q", "quit", "exit"):
+        print("\nGoodbye.\n")
+        return
+
+    # Tolerate paths pasted with surrounding quotes.
+    filepath = raw.strip('"').strip("'")
+
+    load_transactions(filepath)
+    clean_transactions()
+    export_to_excel()
 
 
 if __name__ == "__main__":
